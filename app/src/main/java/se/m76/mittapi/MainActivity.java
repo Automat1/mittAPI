@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG,"Fick data?");
                 Log.i(TAG, String.valueOf(response.body()));
                 Log.i(TAG, " " + response.body().getResult().size());
-                Log.i(TAG, "Namn:  " + response.body().getResult().get(0).getName());
+                Log.i(TAG, "Namn:   " + response.body().getResult().get(0).getName());
             }
 
             @Override
