@@ -4,6 +4,7 @@ import android.*;
 import android.Manifest;
 import android.app.Dialog;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -39,12 +40,15 @@ import android.os.Bundle;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity implements
-        OnMapReadyCallback     {
+        OnMapReadyCallback,
+        LocationProvider.LocationCallback {
+
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private GoogleMap googleMap;
     private GoogleApiClient mGoogleApiClient;
-    private LocationRequest mLocationRequest;
+    //private LocationRequest mLocationRequest;
+    private LocationProvider mLocationProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,9 +65,7 @@ public class MainActivity extends AppCompatActivity implements
             e.printStackTrace();
         }
 
-//        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-//                .findFragmentById(R.id.map);
-//        mapFragment.getMapAsync(this);
+        mLocationProvider = new LocationProvider(this, this);
 
         Gson gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
@@ -119,23 +121,17 @@ public class MainActivity extends AppCompatActivity implements
                 .position(maggan));
 
 
-//        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//
-//            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-//        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-            {
-
-                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 2);
-            }
-
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 2);
+        }
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED) {
             googleMap.setMyLocationEnabled(true);
             googleMap.getUiSettings().setMyLocationButtonEnabled(true);
         } else {
-            Toast.makeText(this, " Permission problem! ", Toast.LENGTH_LONG).show();
+            //Toast.makeText(this, " Permission problem! ", Toast.LENGTH_LONG).show();
         }
 
      /*   mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -184,5 +180,29 @@ public class MainActivity extends AppCompatActivity implements
             // permissions this app might request
         }
     }
+
+    public void handleNewLocation(Location location) {
+        Log.d(TAG, location.toString());
+        Log.i(TAG, " en location har kommit    --------------------------------------------");
+
+        double currentLatitude = location.getLatitude();
+        double currentLongitude = location.getLongitude();
+        LatLng latLng = new LatLng(currentLatitude, currentLongitude);
+
+        //mMap.addMarker(new MarkerOptions().position(new LatLng(currentLatitude, currentLongitude)).title("Current Location"));
+        MarkerOptions options = new MarkerOptions()
+                .position(latLng)
+                .title("I am here!");
+        googleMap.addMarker(options);
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        //setUpMapIfNeeded();
+        mLocationProvider.connect();
+    }
+
 }
 
