@@ -2,7 +2,9 @@ package se.m76.mittapi;
 
 import android.*;
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.support.v4.app.ActivityCompat;
@@ -29,6 +31,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import se.m76.mittapi.models.Stars;
+import se.m76.mittapi.models.Trav;
+import se.m76.mittapi.models.Travs;
 
 import com.google.android.gms.maps.GoogleMap;
 
@@ -41,6 +45,8 @@ import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity implements
         OnMapReadyCallback,
+        GoogleMap.OnMapClickListener,
+        GoogleMap.OnMapLongClickListener,
         LocationProvider.LocationCallback {
 
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -49,6 +55,8 @@ public class MainActivity extends AppCompatActivity implements
     private GoogleApiClient mGoogleApiClient;
     //private LocationRequest mLocationRequest;
     private LocationProvider mLocationProvider;
+
+    private MittApiService service;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,22 +80,28 @@ public class MainActivity extends AppCompatActivity implements
                 .create();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://192.168.1.226:5000/")
+                .baseUrl("http://mittapi-158221.appspot.com/")
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
 
 
-        MittApiService service = retrofit.create(MittApiService.class);
+        //MittApiService service = retrofit.create(MittApiService.class);
+        service = retrofit.create(MittApiService.class);
 
-        Call<Stars> calll = service.listStars();
-        calll.enqueue(new Callback<Stars>() {
+        Call<Stars> call = service.listStars();
+        call.enqueue(new Callback<Stars>() {
             @Override
             public void onResponse(Call<Stars> call, Response<Stars> response) {
                 int statusCode = response.code();
                 Log.i(TAG, "Fick data?");
+                if(response.body()!=null){
                 Log.i(TAG, String.valueOf(response.body()));
                 Log.i(TAG, " " + response.body().getResult().size());
-                Log.i(TAG, "Namn:   " + response.body().getResult().get(0).getName());
+                Log.i(TAG, "Namn:   " + response.body().getResult().get(0).getName());}
+                else
+                {
+                    Log.i(TAG,"Nej det blidee inget data");
+                }
             }
 
             @Override
@@ -111,6 +125,9 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map;
+        googleMap.setOnMapClickListener(this);
+        googleMap.setOnMapLongClickListener(this);
+
         LatLng maggan = new LatLng(59.282477, 18.082992);
 
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(maggan, 13));
@@ -134,10 +151,7 @@ public class MainActivity extends AppCompatActivity implements
             //Toast.makeText(this, " Permission problem! ", Toast.LENGTH_LONG).show();
         }
 
-     /*   mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this).build();*/
+
     }
 
 
@@ -202,6 +216,76 @@ public class MainActivity extends AppCompatActivity implements
         super.onResume();
         //setUpMapIfNeeded();
         mLocationProvider.connect();
+    }
+
+    @Override
+    public void onMapClick(LatLng point) {
+        Log.i(TAG,"En click");
+        googleMap.animateCamera(CameraUpdateFactory.newLatLng(point));
+
+        Toast.makeText(getApplicationContext(),"En click",
+                Toast.LENGTH_LONG).show();
+
+
+    }
+
+    @Override
+    public void onMapLongClick(final LatLng point) {
+    Log.i(TAG,"En long click");
+        googleMap.animateCamera(CameraUpdateFactory.newLatLng(point));
+
+        Toast.makeText(getApplicationContext(), "En long click",
+                Toast.LENGTH_LONG).show();
+
+        new AlertDialog.Builder(this)
+                .setTitle("Crate new Trav")
+                .setMessage("Are you sure you want to create it?")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        Log.i(TAG, "KLICkade aj!");
+                        doCreateATrav(point);
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing
+                    }
+                })
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
+    private void doCreateATrav(LatLng LL){
+        // Skapa en trav objekt
+        Log.i(TAG, "Ska skapa en dårå");
+
+        Travs travs = new Travs();
+        Trav trav = new Trav();
+        trav.setPos(LL);
+        travs.addTrav(trav);
+        Log.i(TAG,"So far......................");
+
+        Call<Travs> call = service.newTrav(travs);
+        call.enqueue(new Callback<Travs>() {
+            @Override
+            public void onResponse(Call<Travs> call, Response<Travs> response) {
+                int statusCode = response.code();
+                Log.i(TAG, "Fick data?");
+                if(response.body()!=null){
+                    Log.i(TAG, String.valueOf(response.body()));
+                    Log.i(TAG, " " + response.body().getResult().size());
+                    Log.i(TAG, "Id:   " + response.body().getResult().get(0).getId());}
+                else
+                {
+                    Log.i(TAG,"Nej bbbbbbbbbbbbbbbb det blidee inget data");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Travs> call, Throwable t) {
+                Log.e(TAG, "Gick inte det!!", t);
+            }
+        });
     }
 
 }
