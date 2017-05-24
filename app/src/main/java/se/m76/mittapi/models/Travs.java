@@ -7,22 +7,22 @@ import java.util.Map;
 
 public class Travs {
 
-    private List<Trav> result = null;
+    private List<Trav> travs = null;
     private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
     public Travs(){
-        result = new ArrayList<Trav>();
+        travs= new ArrayList<Trav>();
     }
 
     public void addTrav(Trav trav){
-        result.add(trav);
+        travs.add(trav);
     }
-    public List<Trav> getResult() {
-        return result;
+    public List<Trav> getListOfTravs() {
+        return travs;
     }
 
     public void setResult(List<Trav> result) {
-        this.result = result;
+        this.travs = result;
     }
 
     public Map<String, Object> getAdditionalProperties() {

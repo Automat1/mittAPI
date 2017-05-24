@@ -1,26 +1,35 @@
 package se.m76.mittapi.models;
+import android.util.Log;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class Trav {
+    private static final String TAG = Trav.class.getSimpleName();
 
-    private Integer id;
+    private long id;
+    private String Key;
     private LatLng pos;
     private LatLng dest;
-    private Integer form;
-    private Integer color;
+    private long form;
+    private long color;
 
-    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+    //private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
-    public void setId(Integer id) {
+    public void setId(long id) {
         this.id = id;
     }
 
-    public Integer getId() {
+    public long getId() {
         return id;
     }
+
+    public String getKey() { return Key; }
+
+    public void setKey(String key) { Key = key; }
+
     public LatLng getPos() {
         return pos;
     }
@@ -37,28 +46,40 @@ public class Trav {
         this.dest = dest;
     }
 
-    public Integer getForm() {
+    public long getForm() {
         return form;
     }
 
-    public void setForm(Integer form) {
+    public void setForm(long form) {
         this.form = form;
     }
 
-    public Integer getColor() {
+    public long getColor() {
         return color;
     }
 
-    public void setColor(Integer color) {
+    public void setColor(long color) {
         this.color = color;
     }
 
-    public Map<String, Object> getAdditionalProperties() {
-        return this.additionalProperties;
+    @Override
+    public boolean equals(Object other){
+
+        if (other == null) return false;
+        if (other == this) return true;
+        if (getClass()!= other.getClass()) return false;
+
+        Trav otherTrav = (Trav)other;
+
+        return otherTrav.getId() == getId();
     }
 
-    public void setAdditionalProperty(String name, Object value) {
-        this.additionalProperties.put(name, value);
-    }
+    //public Map<String, Object> getAdditionalProperties() {
+    //    return this.additionalProperties;
+    //}
+
+    //public void setAdditionalProperty(String name, Object value) {
+    //    this.additionalProperties.put(name, value);
+    //}
 
 }
