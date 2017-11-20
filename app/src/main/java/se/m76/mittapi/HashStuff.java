@@ -14,20 +14,19 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Objects;
 import java.util.TimeZone;
 
 import ch.hsr.geohash.GeoHash;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import se.m76.mittapi.models.AddRemoveLists;
 import se.m76.mittapi.models.Ball;
+import se.m76.mittapi.models.HashTimePair;
 import se.m76.mittapi.models.Trav;
 import se.m76.mittapi.models.Travs;
 
@@ -45,26 +44,29 @@ public class HashStuff {
     Maps mMaps;
     LatLng mPos;
     float mZoom;
+    List<HashTimePair> listOfCalculatedHashes;
+    //HashMap<String,ArrayList<GeoHash>> hoursList;
 
     public HashStuff(Context context, Maps map) {
         mMainActivity = (MainActivity) context;
         mContext = context;
         mMaps = map;
         listOfTravs = new ArrayList<>();
+        listOfCalculatedHashes = new ArrayList<>();
     }
 
-    public List<Ball> findHashesListOfRutor(List<GeoHash> lg){
+    public HashSet<Ball> findAllBallsInGeoHash(GeoHash g, String time){
         // försök räkna ut en hash!
 
-        List<Ball> lista = new ArrayList<>();
-
-        String utcstr = getCurrentTimeStamp();
-        Log.i(TAG, "Datumsträng: " + utcstr);
+        HashSet<Ball> balls = new HashSet<>();
 
         byte[] bytesOfMessage;
         MessageDigest md;
         BigInteger bigInt;
         String ph6;
+        String utcstr;
+
+        // Prepase base32 stuff
         String base32GeoHashCharacterSet = "0123456789bcdefghjkmnpqrstuvwxyz";
         Hashtable<Character, Integer> b32GeoHashtable =
                 new Hashtable<Character, Integer>();
@@ -72,56 +74,64 @@ public class HashStuff {
             b32GeoHashtable.put(base32GeoHashCharacterSet.charAt(i),i);
         }
 
-        for(GeoHash gh : lg) {
-            ph6 = gh.toBase32().substring(0,6);
+        ph6 = g.toBase32().substring(0, 6);
 
-            for (int i = 1; i <= 10; i++) {
-                String dstrh = utcstr + ph6 + i;
+        utcstr = time;
+        //Log.i(TAG, "Datumsträng: " + utcstr);
 
-                bytesOfMessage = new byte[0];
-                try {
-                    bytesOfMessage = dstrh.getBytes("UTF-8");
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
+        for (int i = 1; i <= 1 /*10*/; i++) {
+            String dstrh = utcstr + ph6 + i;
 
-                md = null;
-                try {
-                    md = MessageDigest.getInstance("MD5");
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                }
-                byte[] gp1 = md.digest(bytesOfMessage);
+            bytesOfMessage = new byte[0];
+            try {
+                bytesOfMessage = dstrh.getBytes("UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
 
-                //  Från bytelista till String.
-                bigInt = new BigInteger(1, gp1);
+            md = null;
+            try {
+                md = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
+            byte[] gp1 = md.digest(bytesOfMessage);
 
-                bigInt = bigInt.shiftLeft(2); // för att padda med två nollor till höger
-                String gp_base32Hex = bigInt.toString(32);
+            //  Från bytelista till String.
+            bigInt = new BigInteger(1, gp1);
 
-                // String rfc4648 base32HexCharacterSet = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+            // Skapa base32 sträng, varje 5 bitar ett tecken.
+            bigInt = bigInt.shiftLeft(2); // för att padda med två nollor till höger
+            String gp_base32Hex = bigInt.toString(32);
 
-                // Ändra från base32Hex charset till base32geo charset som är ett eget charset.
-                String gp1geo = "";
-                for (int ii = 0; ii < gp_base32Hex.length(); ii++) {
-                    gp1geo = gp1geo + base32GeoHashCharacterSet.charAt(java.lang.Character.digit(gp_base32Hex.charAt(ii), 32));
-                }
+            // String rfc4648 base32HexCharacterSet = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
 
-                // längden är 26. 18 till geo 8 kvar. Ett till färg.
+            // Ändra från base32Hex charset till base32geo charset som är ett eget charset.
+            String gp1geo = "";
+            for (int ii = 0; ii < gp_base32Hex.length(); ii++) {
+                gp1geo = gp1geo + base32GeoHashCharacterSet.charAt(java.lang.Character.digit(gp_base32Hex.charAt(ii), 32));
+            }
 
-                String gp1r = ph6 + gp1geo.substring(0, 18);
-                Ball b = new Ball();
-                b.geoHash = gp1r;
-                b.color = b32GeoHashtable.get(gp1r.charAt(6))%4;
+            // längden är 26. 18 till geo 8 kvar. Ett till färg.
+
+            String gp1r = ph6 + gp1geo.substring(0, 18);
+            Ball b = new Ball();
+            b.geoHash = gp1r;
+            b.color = b32GeoHashtable.get(gp1geo.charAt(18)) % 4;
+            b.time = b32GeoHashtable.get(gp1geo.charAt(19)) * b32GeoHashtable.get(gp1geo.charAt(20)) % 60;
+
                 // 0 yellow
                 // 1 blue
                 // 3 red
                 // 4 green
 
-                lista.add(b);
+            Integer luck = b32GeoHashtable.get(gp1geo.charAt(21));
+            if(luck>=0) {
+                balls.add(b);
             }
-        }
-        return lista;
+        } // next i..
+        return balls;
+
     }
 
     private LatLng getLatLngFromGeoHash(GeoHash gh) {
@@ -130,12 +140,16 @@ public class HashStuff {
     }
 
 
-    // Denna ska köras i annan thread!
-    public AddRemoveLists setCamera(LatLngBounds curScreen){
+    // Running as AsyncTask
+    // Prepares all lists Map need to show balls and OTHER
+    public void updateHashes(LatLngBounds curScreen) {
 
-        List<GeoHash> listOfRutor = new ArrayList<>();
+        long timeNow = System.currentTimeMillis() / 1000;
+
+        // Create list of hashes in screen
+        List<GeoHash> listOfNewHashes = new ArrayList<>();
         LatLng ne = curScreen.northeast;
-        GeoHash gh = GeoHash.withCharacterPrecision(ne.latitude,ne.longitude,6);
+        GeoHash gh = GeoHash.withCharacterPrecision(ne.latitude, ne.longitude, 6);
 
         // 1 hitta övre högra hash
         // 2 gå söderut så länge de är i bild
@@ -145,77 +159,52 @@ public class HashStuff {
         double centerLat = curScreen.getCenter().latitude;
         double centerLong = curScreen.getCenter().longitude;
 
+        listOfNewHashes.add(gh);
         do {
-            listOfRutor.add(gh);
+                listOfNewHashes.add(gh);
             GeoHash ghSouth = gh.getSouthernNeighbour();
             while(curScreen.contains(new LatLng(ghSouth.getBoundingBox().getUpperLeft().getLatitude(),centerLong))){
-                listOfRutor.add(ghSouth);
+                listOfNewHashes.add(ghSouth);
                 ghSouth = ghSouth.getSouthernNeighbour();
             }
             gh = gh.getWesternNeighbour();
         } while(curScreen.contains(new LatLng(centerLat , gh.getBoundingBox().getLowerRight().getLongitude())));
 
-        Log.i(TAG, "Antal hashar i bild: " + listOfRutor.size());
-        List<Ball> lst = findHashesListOfRutor(listOfRutor);
-        HashSet<Ball> blist = mMaps.getListOfBalls();
-        List<Ball> remove = new ArrayList<>();
-        List<Ball> adda = new ArrayList<>();
+        Log.i(TAG, "Number of new visible hashes was: " + listOfNewHashes.size());
 
-        String base32GeoHashCharacterSet = "0123456789bcdefghjkmnpqrstuvwxyz";
+        HashMap<String, HashSet<Ball>> theBallList = new HashMap<>();
+        HashSet<Ball> hs;
+        for (int h = 0; h < 24; h++) {
+            String time = getCurrentTimeStamp(timeNow + h * 60 * 60);
+            hs = new HashSet<>();
+            for (GeoHash g : listOfNewHashes) {
+                hs.addAll(findAllBallsInGeoHash(g, time));
+            }
+            //Log.i(TAG, "Adding " + hs.size() + " at " + time);
+            theBallList.put(time, hs);
+        }
+
+        mMaps.setBallList(theBallList);
+
+        //Log.i(TAG, "Number of new visible hashes was: " + listOfNewHashes.size());
+
+        /* String base32GeoHashCharacterSet = "0123456789bcdefghjkmnpqrstuvwxyz";
         Hashtable<Character, Integer> b32GeoHashtable =
-                new Hashtable<Character, Integer>();
+                new Hashtable<>();
         for(int i = 0;i < 32;i++){
             b32GeoHashtable.put(base32GeoHashCharacterSet.charAt(i),i);
-        }
-
-
-        Integer skips = new Integer(0);
-        for(Ball b : lst){
-            if(!blist.contains(b)){
-                //Ball b = new Ball();
-                //b.geoHash = s;
-                //b.color = b32GeoHashtable.get(s.charAt(18));
-                adda.add(b);
-            }
-            else{
-                skips++;
-                //Log.i(TAG,"Hash already in list");
-            }
-        }
-        Log.i(TAG, "SKippade för att redan finns:" + skips);
-
-
-        // skapa location mitt i bild för att ta bort bollar
-        Location locScreen = new Location("");
-        locScreen.setLatitude(centerLat);
-        locScreen.setLongitude(centerLong);
-        Location l = new Location("");
-
-        if(!blist.isEmpty())
-        for(Ball b : blist){
-            gh = GeoHash.fromGeohashString(b.geoHash);
-            l.setLatitude(gh.getPoint().getLatitude());
-            l.setLongitude(gh.getPoint().getLongitude());
-            // 10000 meters
-            //Log.i(TAG, "Distance is : " + l.distanceTo(locScreen));
-            if(l.distanceTo(locScreen)>10000){
-                remove.add(b);
-            }
-        }
-
-        Log.i(TAG, "Created add: " + adda.size() + " och remove: " + remove.size());
-        AddRemoveLists arl = new AddRemoveLists();
-        arl.addList = adda;
-        arl.removeList = remove;
-        return arl;
-
+        }*/
     }
 
-    private String getCurrentTimeStamp() {
+    // tar utctime / 1000 (s sedan 1970, ger en datumsträng
+    // Jämn timme så det blir inte exakt samma tid.
+    public String getCurrentTimeStamp(long time) {
         SimpleDateFormat utcstr;
         utcstr =  new SimpleDateFormat("ddMMyyyyHH");
         utcstr.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return utcstr.format(new Date());
+        Date d = new Date();
+        d.setTime(time*1000);
+        return utcstr.format(d);
     }
 
     private void doCreateATrav(LatLng LL){
@@ -284,7 +273,7 @@ public class HashStuff {
         //List<LatLng> lista ;
         //lista = findHashesAtLocation(ll);
         //Log.i(TAG, "Lista lngd " + lista.size());
-        //mMaps.updateListOnMap(lista);
+        //mMaps.updateListOfBalls(lista);
     }
 
     private void getTravsAtPos(LatLng LL){

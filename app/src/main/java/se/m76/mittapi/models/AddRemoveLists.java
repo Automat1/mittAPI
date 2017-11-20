@@ -7,6 +7,6 @@ import java.util.List;
  */
 
 public class AddRemoveLists {
-        public List<Ball> addList;
+        public List<AddBallPair> addList;
         public List<Ball> removeList;
 }

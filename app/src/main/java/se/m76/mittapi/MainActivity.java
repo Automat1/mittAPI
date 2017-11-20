@@ -5,7 +5,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Handler;
@@ -30,6 +29,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
+
 import static java.lang.Math.abs;
 
 
@@ -48,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements
     boolean mMap = false;
     long timeOfLastListUpdate;
     Integer cnt;
+    Integer xOld;
     double spd;
     boolean runSpd;
     Canvas canvas;
@@ -61,6 +65,19 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Log.d(TAG, "Startar ...");
+
+        long timeNow = System.currentTimeMillis() / 1000;
+
+        SimpleDateFormat utcstrFor;
+        utcstrFor =  new SimpleDateFormat("ddMMyyyyHH");
+        utcstrFor.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String  utcstr = utcstrFor.format(new Date());
+        Log.i(TAG, "Datumsträng: " + utcstr);
+
+        Date date = new Date();
+        date.setTime((timeNow + 24*60*60)*1000);
+        Log.i(TAG, "Datum + 1h:  " + utcstrFor.format(date));
+
 
         spd = 0.0;
         runSpd = false;
@@ -118,7 +135,11 @@ public class MainActivity extends AppCompatActivity implements
                     if (abs(spd) < 10) {
                         runSpd = false;
                     }
+                    if(cnt>2399)cnt=2399;
+                    if(cnt<0)cnt=0;
+                    mMaps.setTime(cnt/100);
                 }
+                text2.setText("X pos: " + cnt/100);
                 moveArrow();
                 mMaps.updateListOnMap();
                 h.postDelayed(this, delay);
@@ -133,6 +154,7 @@ public class MainActivity extends AppCompatActivity implements
                 }
             });
 
+
         image1.setOnTouchListener(new View.OnTouchListener() {
 
             @Override
@@ -146,6 +168,7 @@ public class MainActivity extends AppCompatActivity implements
 
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     case MotionEvent.ACTION_DOWN:
+                        xOld = X - cnt;
                         if(mVelocityTracker == null) {
                             // Retrieve a new VelocityTracker object to watch the
                             // velocity of a motion.
@@ -171,8 +194,11 @@ public class MainActivity extends AppCompatActivity implements
                         mVelocityTracker.computeCurrentVelocity(1000);
                         spd = VelocityTrackerCompat.getXVelocity(mVelocityTracker,
                                 pointerId);
-                        text2.setText("X är : " + spd);
-                        cnt = X;
+                        //text2.setText("X är : " + spd);
+                        cnt = X-xOld;
+                        if(cnt>2399)cnt=2399;
+                        if(cnt<0)cnt=0;
+                        mMaps.setTime(cnt/100);
                         break;
                 }
                 //_root.invalidate();

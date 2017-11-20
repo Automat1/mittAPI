@@ -1,20 +1,17 @@
 package se.m76.mittapi.models;
 
-import android.util.Log;
-
 import com.google.android.gms.maps.model.Marker;
 
 /**
  * Created by Jakob on 2017-06-04.
  */
 
-public class Ball {
+public class Ufo {
         public String geoHash;
         public Integer color;
         public double time;
         public Integer direction;
         public Marker marker;
-        public float fade;
 
         @Override
         public boolean equals(Object obj){
@@ -33,10 +30,10 @@ public class Ball {
                 }
                 return true;
             }
-            if (!Ball.class.isAssignableFrom(obj.getClass())) {
+            if (!Ufo.class.isAssignableFrom(obj.getClass())) {
                 return false;
             }
-            final Ball other = (Ball) obj;
+            final Ufo other = (Ufo) obj;
             if ((this.geoHash == null) ? (other.geoHash != null) : !this.geoHash.equals(other.geoHash)) {
                 return false;
             }

@@ -16,17 +16,28 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.GroundOverlay;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 
 import ch.hsr.geohash.GeoHash;
+import se.m76.mittapi.models.AddBallPair;
 import se.m76.mittapi.models.AddRemoveLists;
 import se.m76.mittapi.models.Ball;
+import se.m76.mittapi.models.Ufo;
 
 /**
  * Created by Jakob on 2017-04-30.
@@ -49,25 +60,31 @@ public class Maps implements
     private Context mContext;
     private MainActivity mMainActivity;
     private HashStuff mHashStuff;
+    Integer timeAdder;
 
     private boolean firstPos = false;
 
-    private HashSet<Ball> ballList;
-
-    private AddRemoveLists addRemoveList;
+    // Hours, Balls
+    private HashMap<String, HashSet<Ball>> ballList;
+    private HashSet<Ufo> ufoList;
+    private List<Ball> ballsInView;
+    // private AddRemoveLists addRemoveList;
 
     public Maps(Context context) {
         mMapsCallback = (MapsCallback) context;
         mContext = context;
         mMainActivity = (MainActivity) context;
-        ballList = new HashSet<Ball>();
+        ballList = new HashMap<>();
+        ufoList = new HashSet<>();
+        ballsInView = new ArrayList<>();
+        timeAdder = new Integer(0);
     }
 
-    public void setHashStuff(HashStuff hashstuff){
+    public void setHashStuff(HashStuff hashstuff) {
         mHashStuff = hashstuff;
     }
 
-    public void mapOnResume(){
+    public void mapOnResume() {
         try {
             // Loading map
             initilizeMap();
@@ -88,119 +105,107 @@ public class Maps implements
     }
 
     float oldZoom = 0;
+    //float mZoom = 0;
+
+    private void checkZoomLevel(){
+        float mZoom = googleMap.getCameraPosition().zoom;
+        if(mZoom>14 && (zoomedIn == false)) {
+            zoomedIn = true;
+            Log.i(TAG,"Zoomed In");
+        }
+        if(mZoom<=14 && zoomedIn == true) {
+            zoomedIn = false;
+            Log.i(TAG,"Zoomed Out");
+            ballList = new HashMap<>();
+        }
+    }
 
     @Override
     public void onCameraIdle() {
-        // vet inte om jag använder denna.
-
-//        LatLng mPosition = googleMap.getCameraPosition().target;
-//        float mZoom = googleMap.getCameraPosition().zoom;
-//        //private float currentZoom = -1;
-//        Log.i(TAG,"Got OnCameraIdle zoom:" + mZoom);
-//        if(mZoom < 14 && oldZoom >= 14){
-//            hideAllPoints();
-//        }
-//
-//        if(mZoom > 14 && oldZoom <= 14){
-//            showAllPoints();
-//        }
-//        oldZoom = mZoom;
+        Log.i(TAG, "Camera Idle");
+        checkZoomLevel();
+        if(zoomedIn)
+            upDateHashList();
     }
 
-
-
-    public void hideAllPoints(){
-        for(Ball b : ballList){
+    public void hideAllPoints() {
+       /* for(Ball b : ballList){
             b.marker.setVisible(false);
-        }
-    }
-    public void showAllPoints(){
-        for(Ball b : ballList){
-            b.marker.setVisible(true);
-        }
+        }*/
     }
 
+    public void showAllPoints() {
+        /*for(Ball b : ballList){
+            b.marker.setVisible(true);
+        }*/
+    }
 
     long told;
 
     @Override
     public void onCameraMove() {
+        checkZoomLevel();
         long t = SystemClock.uptimeMillis(); // bör vara nåt med nanos?
-        long del = t-told;
+        long del = t - told;
         //Log.i(TAG, " del: " + del + " told " + told);
-        if(del<1000) return;
+        if (del < 1000) return;
         told = t;
 
         Log.i(TAG, "1000ms i move!");
-
-        upDateHashList();
+        if(zoomedIn)
+            upDateHashList();
     }
 
-    boolean zoomedOut;
+    boolean zoomedIn;
 
-    private void upDateHashList(){
+    private void upDateHashList() {
 
-        // get camerapos and zoom and tell hash:
-        LatLng mPosition = googleMap.getCameraPosition().target;
-        float mZoom = googleMap.getCameraPosition().zoom;
-
+        // get curscrren to see wish hashes are visible
         LatLngBounds curScreen = googleMap.getProjection()
                 .getVisibleRegion().latLngBounds;
 
-        if(mZoom>14) {
-            //mHashStuff.setCamera(curScreen);
-            new DoHashOp().execute(curScreen);
-            if(zoomedOut == true) {
-                zoomedOut = false;
-                Log.i(TAG,"Zoom in");
+        new upDateBallListInBackground().execute(curScreen);
+
+    }
+
+    public void setBallList(HashMap<String, HashSet<Ball>> hm) {
+        if(zoomedIn) ballList = hm;
+    }
+
+    public HashSet<Ufo> getListOfUfos() {
+        return ufoList;
+    }
+
+    public void updateListOnMap() {
+
+        long timeNow = System.currentTimeMillis() / 1000;
+        String time = mHashStuff.getCurrentTimeStamp(timeNow + timeAdder);
+
+        Drawable circleDrawable;
+
+        Iterator<Ball> it = ballsInView.iterator();
+        while(it.hasNext()){
+            Ball b = it.next();
+            Boolean remove = false;
+            if(ballList.get(time)==null) remove = true;
+            else if(!ballList.get(time).contains(b)) remove = true;
+            if(remove) {
+                b.fade -= 0.1f;
+                //Log.i(TAG,"fading" + b.fade);
+                if(b.fade <= 0) {
+                    b.marker.remove();
+                    it.remove();
+                } else {
+                    b.marker.setAlpha(b.fade);
+                }
             }
         }
-        else{
-            if(zoomedOut==false) {
-                zoomedOut = true;
-                Log.i(TAG,"Zoom out");
-            }
-        }
 
-    }
-
-    public void setUpdateList(boolean upd){
-        updateList = upd;
-    }
-
-    public HashSet<Ball> getListOfBalls(){
-        return ballList;
-    }
-
-    boolean updateList = true;
-
-    public void updateListOnMap(){
-        //if(updateList == false) return;
-        // lista med de som finns, lista med de som bort och lista med de som till:
-        if(updateList) {
-
-
-            if (zoomedOut == false) {
-
-
-                if (addRemoveList == null) return;
-                if (addRemoveList.addList == null) return;
-                if (addRemoveList.addList.size() == 0) return;
-                Ball b = addRemoveList.addList.get(0);
-                if (b != null) {
-
-                    if (ballList.contains(b)) {
-                        Log.i(TAG, "krock");
-                        addRemoveList.addList.remove(0);
-                        return;
-                    }
-
+        if (ballList.get(time) != null)
+            for (Ball b : ballList.get(time)) {
+                if (!ballsInView.contains(b)) {
                     GeoHash gh = GeoHash.fromGeohashString(b.geoHash);
                     LatLng ll = new LatLng(gh.getPoint().getLatitude(), gh.getPoint().getLongitude());
-
-                    //Log.i(TAG, "Update: " + s + " Size: " + addRemoveList.addList.size());
-
-                    Drawable circleDrawable;
                     switch (b.color) {
                         case 0: // yell
                             circleDrawable = ContextCompat.getDrawable(mMainActivity, R.drawable.circle_yellow);
@@ -216,7 +221,6 @@ public class Maps implements
                             break;
                         default:
                             circleDrawable = ContextCompat.getDrawable(mMainActivity, R.drawable.circle_yellow);
-
                     }
 
                     BitmapDescriptor markerIcon = getMarkerIconFromDrawable(circleDrawable);
@@ -225,22 +229,14 @@ public class Maps implements
                             .position(ll)
                             .title(b.geoHash)
                             .icon(markerIcon);
-                    Marker m = googleMap.addMarker(options);
-                    b.marker = m;
-                    ballList.add(b);
-                    addRemoveList.addList.remove(0);
-                }
-            } else {
-                if (!ballList.isEmpty()) {
-                    Log.i(TAG, "ZO Ballist size : " + ballList.size());
-                    Ball b = ballList.iterator().next();
-                    Iterator<Ball> i = ballList.iterator();
-                    b = i.next();
-                    b.marker.remove();
-                    i.remove();
+                    b.marker = googleMap.addMarker(options);
+                    b.fade = 1.0f;
+                    ballsInView.add(b);
+                   // Log.i(TAG, "Added 1 ball. Total: " + ballsInView.size());
+
                 }
             }
-        }
+
     }
 
     private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
@@ -278,39 +274,58 @@ public class Maps implements
         mMainActivity.mMap = true;
 
         LatLng maggan = new LatLng(59.282477, 18.082992);
-//
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(maggan, 13));
 
-        upDateHashList();
-//
-//        map.addMarker(new MarkerOptions()
-//                .title("Magganparken")
-//                .snippet("En park i Enskede")
-//                .position(maggan));
+        //upDateHashList();
+
+        // Testa Polylines:
+        // Instantiates a new Polyline object and adds points to define a rectangle
+        PolylineOptions rectOptions = new PolylineOptions()
+                .add(new LatLng(59.28, 18.10))
+                .add(new LatLng(59.281, 18.08));
+
+        // Instantiates a new CircleOptions object and defines the center and radius
+        CircleOptions circleOptions = new CircleOptions()
+                .center(new LatLng(59.281, 18.08))
+                .radius(75); // In meters
+
+// Get back the mutable Circle
+        Circle circle = map.addCircle(circleOptions);
+
+// Get back the mutable Polyline
+        Polyline polyline = map.addPolyline(rectOptions);
 
 
+        // Testa overlay:
+        LatLng maggan2 = new LatLng(59.28, 18.10);
+
+        GroundOverlayOptions groundOverlayOptions = new GroundOverlayOptions()
+                .image(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher))
+                .position(maggan2, 860f, 650f);
+
+        // Add an overlay to the map, retaining a handle to the GroundOverlay object.
+        GroundOverlay imageOverlay = map.addGroundOverlay(groundOverlayOptions);
     } // OnMapReady
 
 
-    private class DoHashOp extends AsyncTask<LatLngBounds, Void, AddRemoveLists> {
+    private class upDateBallListInBackground extends AsyncTask<LatLngBounds, Void, Void> {
 
         @Override
         protected void onPreExecute(){
-            updateList = false;
-            Log.i(TAG, "start async");
-        }
-        @Override
-        protected AddRemoveLists doInBackground(LatLngBounds... params) {
-            return mHashStuff.setCamera(params[0]);
-
+            //updateList = false;
+            Log.i(TAG, "start update Hashes");
         }
 
         @Override
-        protected void onPostExecute(AddRemoveLists result) {
-            addRemoveList = result;
+        protected Void doInBackground(LatLngBounds... params) {
+            mHashStuff.updateHashes(params[0]);
+            return null;
+        }
 
-            Log.i(TAG, "stop async");
-            updateList = true;
+        @Override
+        protected void onPostExecute(Void result) {
+
+            Log.i(TAG, "finished Update Hashes");
         }
     }
 
@@ -377,5 +392,10 @@ public class Maps implements
 //        // bara för test:
 //        mMapsCallback.handleSomeThing();
       }
+
+      public void setTime(Integer time){
+          timeAdder = time*60*60; // convert hours to seconds
+      }
+
 
 }
