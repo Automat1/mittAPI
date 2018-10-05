@@ -1,5 +1,6 @@
 package se.m76.mittapi.models;
 
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.Marker;
 
 /**
@@ -9,9 +10,9 @@ import com.google.android.gms.maps.model.Marker;
 public class Ufo {
         public String geoHash;
         public Integer color;
-        public double time;
+        public Long time;
         public Integer direction;
-        public Marker marker;
+        public Circle circle;
 
         @Override
         public boolean equals(Object obj){

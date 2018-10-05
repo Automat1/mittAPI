@@ -5,4 +5,6 @@ package se.m76.mittapi.models;
  */
 
 public class AddUfoPair {
+    public String hour;
+    public Ufo ufo;
 }

@@ -6,6 +6,6 @@ package se.m76.mittapi.models;
  */
 
 public class AddBallPair {
-        public String hour;
+        public long hour;
         public Ball ball;
 }

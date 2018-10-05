@@ -49,15 +49,19 @@ public class MainActivity extends AppCompatActivity implements
     /*private*/public ApiService apiService; // fixa så att den kan vara private igen.
     boolean mGps;
     boolean mMap = false;
-    long timeOfLastListUpdate;
-    Integer cnt;
-    Integer xOld;
+    //long timeOfLastListUpdate;
+    int cnt;
+    int xOld;
     double spd;
     boolean runSpd;
     Canvas canvas;
     Drawable d;
     ImageView image1;
     TextView text2;
+    TextView debugTxt1;
+    TextView debugTxt2;
+    TextView debugTxt3;
+    TextView debugTxt4;
     private VelocityTracker mVelocityTracker = null;
 
     @Override
@@ -93,6 +97,11 @@ public class MainActivity extends AppCompatActivity implements
         //image1.setImageResource(R.drawable.fulpil);
         text2.setText("TEXT2");
 
+        debugTxt1 = (TextView) findViewById(R.id.textStatus1);
+        debugTxt2 = (TextView) findViewById(R.id.textStatus2);
+        debugTxt3 = (TextView) findViewById(R.id.textStatus3);
+        debugTxt4 = (TextView) findViewById(R.id.textStatus4);
+
         Bitmap drawnBitmap = Bitmap.createBitmap(2000, 200, Bitmap.Config.ARGB_8888);
         canvas = new Canvas(drawnBitmap);
         d = getResources().getDrawable(R.drawable.fulpil);
@@ -106,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         image1.setImageBitmap(drawnBitmap);
 
-        timeOfLastListUpdate = 0;
+        //timeOfLastListUpdate = 0;
 
         checkAndAskForPermisssions();
 
@@ -129,17 +138,20 @@ public class MainActivity extends AppCompatActivity implements
 
         final boolean b = h.postDelayed(new Runnable() {
             public void run() {
+
+                debugTxt1.setText( "Zoom: " + mMaps.zoomLevel);
+
                 if (runSpd) {
                     cnt = cnt + (int) (spd / 60.0);
                     spd = spd * 0.95;
                     if (abs(spd) < 10) {
                         runSpd = false;
                     }
-                    if(cnt>2399)cnt=2399;
-                    if(cnt<0)cnt=0;
-                    mMaps.setTime(cnt/100);
+                    if(cnt>=24*60*4)cnt=24*60*4-1;
+                    if(cnt<0) cnt=0;
+                    mMaps.setTime(cnt*15);
                 }
-                text2.setText("X pos: " + cnt/100);
+                text2.setText("Time: + " + cnt/4/60 + "h " + (cnt/4)%60 + "m " + (cnt*15)%60 + "s");
                 moveArrow();
                 mMaps.updateListOnMap();
                 h.postDelayed(this, delay);
@@ -155,10 +167,12 @@ public class MainActivity extends AppCompatActivity implements
             });
 
 
+
         image1.setOnTouchListener(new View.OnTouchListener() {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                image1.performClick();
                 final int X = (int) event.getRawX();
                 final int Y = (int) event.getRawY();
 
@@ -196,9 +210,9 @@ public class MainActivity extends AppCompatActivity implements
                                 pointerId);
                         //text2.setText("X är : " + spd);
                         cnt = X-xOld;
-                        if(cnt>2399)cnt=2399;
+                        if(cnt>=24*60*4)cnt=24*60*4-1;
                         if(cnt<0)cnt=0;
-                        mMaps.setTime(cnt/100);
+                        mMaps.setTime(cnt*15);
                         break;
                 }
                 //_root.invalidate();
@@ -220,8 +234,8 @@ public class MainActivity extends AppCompatActivity implements
             d.setBounds(0+i+tmp, 0, 200+i+tmp, 200);
             d.draw(canvas);
         }
-
     }
+
     public void checkAndAskForPermisssions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
         {
@@ -244,8 +258,6 @@ public class MainActivity extends AppCompatActivity implements
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, " Got FINE location ", Toast.LENGTH_LONG).show();
                     mGps = true;
-
-
                 } else {
                     Toast.makeText(this, " No location - No fun ", Toast.LENGTH_LONG).show();
                     // permission denied, boo! Disable the
@@ -267,9 +279,9 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         // Koll avstånd i stället.
-        if((System.currentTimeMillis() - timeOfLastListUpdate) > 10000) {
+        //if((System.currentTimeMillis() - timeOfLastListUpdate) > 10000) {
         //    mHashStuff.updateListAtPos(location);
-        }
+        //}
     }
 
     @Override
@@ -285,3 +297,31 @@ public class MainActivity extends AppCompatActivity implements
     }
 }
 
+/*
+
+1. En karta och en tidsnurra.
+2. Punkter ritas upp efter hash
+3. Man plockar punkter
+4. 1-10 siffror tas i ordning
+5. En cirkel sparar
+6. Poäng, antal sparade cirklar...
+
+Välj 10, 100 , 1000
+Timer från 1.
+Topplista..
+
+Bra första:
+Ta 1-10,100 på tid.
+Delningsfunktion. Topplista.
+
+Senare steg..lägg till.
+
+
+Hashing
+addList
+removeList
+addedHashes
+
+
+
+ */

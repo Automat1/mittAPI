@@ -44,4 +44,36 @@
             android:text="TIME" />
 
     </FrameLayout>
+
+    <TextView
+        android:id="@+id/textStatus1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/textStatus2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/textStatus1"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/textStatus3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/textStatus2"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/textStatus4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/textStatus3"
+        android:text="TextView" />
 </RelativeLayout>

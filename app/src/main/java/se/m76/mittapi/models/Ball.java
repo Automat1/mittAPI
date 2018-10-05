@@ -2,6 +2,7 @@ package se.m76.mittapi.models;
 
 import android.util.Log;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 
 /**
@@ -10,8 +11,10 @@ import com.google.android.gms.maps.model.Marker;
 
 public class Ball {
         public String geoHash;
+        public LatLng latLng;
         public Integer color;
-        public double time;
+        public double timeStart;
+        public double timeEnd;
         public Integer direction;
         public Marker marker;
         public float fade;
